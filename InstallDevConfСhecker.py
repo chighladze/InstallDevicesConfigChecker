@@ -12,7 +12,7 @@ scope = ["https://spreadsheets.google.com/feeds",
          "https://www.googleapis.com/auth/drive"
          ]
 
-creds = ServiceAccountCredentials.from_json_keyfile_name(r"C:\Users\giorgi2\Desktop\InstalDevChicker\creds.json", scope)
+creds = ServiceAccountCredentials.from_json_keyfile_name(r"C:\Users\giorgi\OneDrive\PyProjects\SkyTel\Installs\DeviceConfigChecker\creds.json", scope)
 client = gspread.authorize(creds)
 sheet_DATA = client.open("Device Config Checker").worksheet("DATA")
 
