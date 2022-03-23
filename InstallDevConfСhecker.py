@@ -12,7 +12,7 @@ scope = ["https://spreadsheets.google.com/feeds",
          "https://www.googleapis.com/auth/drive"
          ]
 
-creds = ServiceAccountCredentials.from_json_keyfile_name(r"C:\Users\giorgi\OneDrive\PyProjects\SkyTel\Installs\DeviceConfigChecker\creds.json", scope)
+creds = ServiceAccountCredentials.from_json_keyfile_name(r"creds.json", scope)
 client = gspread.authorize(creds)
 sheet_DATA = client.open("Device Config Checker").worksheet("DATA")
 
@@ -54,11 +54,11 @@ FROM (
          WHERE nto.id <> ''
            AND nt.status = 1
            AND nto.technologyID = 0
-           AND (TO_SECONDS(NOW()) - TO_SECONDS(nt.dateEnd)) > 7200
-           AND (TO_SECONDS(NOW()) - TO_SECONDS(nt.dateEnd)) < 172800
+           AND nt.dateEnd BETWEEN (NOW() - INTERVAL 48 HOUR) AND (NOW() - INTERVAL 2 HOUR)
            AND LENGTH(na.mac) = 17
            AND na.mac LIKE '%:%'
            AND na.ip <> ''
+#            AND na.ip = '10.80.8.48'
            AND nt.id NOT IN {tuple(task_ids)}
          GROUP BY nt.id
          ORDER BY nt.dateEnd
@@ -72,13 +72,14 @@ WHERE d1.TasksN = 1
 
 ubiquitipass = [['ubnt', 'ubnt1'], ['admin', 'q1w2Admin'], ['ubnt', 'q1w2Admin'], ['wrong', 'pass']]
 microtikpass = [['admin', 'admin1'], ['wrong', 'pass']]
-chain_signal_difference = 40
+chain_signal_difference = 5
 
 LiteBeam_5ACconf = ['radio.1.countrycode=511\n', 'radio.1.txpower=24\n', 'radio.1.scan_list.status=disabled\n', 'radio.1.reg_obey=disabled\n', 'wireless.1.wds.status=enabled\n',
                     'netconf.2.ip=192.168.15.1\n']
 MikrotikConf = ['192.168.15.1/24']
 
-UbiquitiOtherConf = ['radio.1.countrycode=511\n', 'radio.1.txpower=25\n', 'wireless.1.wds.status=enabled\n', 'netconf.2.ip=192.168.15.1\n']
+UbiquitiOtherConf = ['radio.1.countrycode=511\n', 'radio.1.txpower=25\n', 'wireless.1.wds.status=enabled\n', 'netconf.2.ip=192.168.15.1\n',
+                     'wireless.1.scan_list.status=disabled\n']
 datalen = len(query_data)
 
 n = 0
@@ -116,11 +117,22 @@ for i in query_data:
                                 #     sheet_DATA.update(f"A{last_task_id_cell}:K", [i + [f"Connection Error, Maybe Not Stable Ping - {str(p)[str(p).find('Round')+17:]}"]])
                                 if [connect][0] == None and u in [['ubnt', 'ubnt1'], ['admin', 'q1w2Admin'], ['ubnt', 'q1w2Admin']]:
 
-                                    stdin, stdout, stderr = client.exec_command("mca-status | grep chain")
+                                    stdin, stdout, stderr = client.exec_command("wstalist | grep '\"signal\"'")
                                     signal = stdout.readlines()
 
-                                    signal1 = int(signal[0][-4:])
-                                    signal2 = int(signal[1][-4:])
+                                    print(signal)
+                                    print(len(signal))
+
+                                    if len(signal) == 3:
+                                        signal1 = int(signal[0][-4:-2])
+                                        signal2 = int(signal[2][-4:-2])
+                                    else:
+                                        signal1 = int(signal[0][2:-2].split(",")[11][-2:])
+                                        signal2 = int(signal[0][2:-2].split(",")[328][-2:])
+
+                                    print(signal1)
+                                    print(signal2)
+
                                     if signal1 >= signal2:
                                         difference = signal1 - signal2
                                     else:
@@ -161,7 +173,7 @@ for i in query_data:
                                             break
                                         else:
                                             stdin, stdout, stderr = client.exec_command(
-                                                "cat /tmp/system.cfg | grep -E  'radio.1.countrycode=|radio.1.txpower=|wireless.1.wds.status=|netconf.2.ip='")
+                                                "cat /tmp/system.cfg | grep -E  'radio.1.countrycode=|radio.1.txpower=|wireless.1.wds.status=|netconf.2.ip=|wireless.1.scan_list.status='")
                                             lines = stdout.readlines()
 
                                             wrong_config = set(lines) - set(UbiquitiOtherConf)
